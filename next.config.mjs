@@ -6,6 +6,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Keep heavy Stellar SDK out of the server bundle entirely —
+  // it is only ever imported dynamically inside client components.
+  serverExternalPackages: [
+    '@stellar/stellar-sdk',
+    '@stellar/freighter-api',
+  ],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Stellar SDK requires Node.js built-ins — polyfill for the browser bundle

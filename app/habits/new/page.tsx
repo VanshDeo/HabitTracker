@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useWallet } from '@/hooks/useWallet';
 import { useHabits } from '@/hooks/useHabits';
 import { CreateHabitForm } from '@/components/CreateHabitForm';
@@ -17,14 +16,12 @@ const REWARD_TABLE = [
 ];
 
 export default function NewHabitPage() {
-  const router = useRouter();
   const { publicKey, isConnected } = useWallet();
   const { txState, createHabit, resetTx } = useHabits(publicKey);
 
+  // CreateHabitForm handles navigation via its own useEffect on txState.status === 'success'
   async function handleCreate(name: string, description: string, frequency: 'Daily' | 'Weekly') {
     await createHabit(name, description, frequency);
-    // Navigate back to dashboard after the tx state enters success
-    setTimeout(() => router.push('/'), 1800);
   }
 
   return (

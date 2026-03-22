@@ -13,14 +13,16 @@ export interface WalletInfo {
 
 const DEMO_PUBLIC_KEY = 'GDEMO7STELLAR7HABITS7TRACKER7PUBLICKEY7GABCDEFGHIJKLMNOP';
 const EXPECTED_PASSPHRASE =
-  process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ??
-  'Test SDF Network ; September 2015';
+  process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? 'Test SDF Network ; September 2015';
 
-// ── Try the real Freighter API; fall back gracefully ──────────────────────────
+// ── Freighter API helper ──────────────────────────────────────────────────────
+// Handles both v2 and v3 API shapes (v3 returns { address } from getAddress())
 
-async function tryFreighter<T>(fn: () => Promise<T>): Promise<T | null> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadFreighter(): Promise<any | null> {
   try {
-    return await fn();
+    if (typeof window === 'undefined') return null;
+    return await import('@stellar/freighter-api').catch(() => null);
   } catch {
     return null;
   }
@@ -28,12 +30,23 @@ async function tryFreighter<T>(fn: () => Promise<T>): Promise<T | null> {
 
 export async function checkExistingConnection(): Promise<string | null> {
   try {
-    // Dynamic import so the module is only resolved client-side
-    const freighter = await import('@stellar/freighter-api').catch(() => null);
+    const freighter = await loadFreighter();
     if (!freighter) return null;
-    const connected = await freighter.isConnected();
+
+    // v3 API: isConnected() returns { isConnected: boolean }
+    const connResult = await freighter.isConnected().catch(() => null);
+    if (!connResult) return null;
+    const connected =
+      typeof connResult === 'boolean' ? connResult : connResult?.isConnected;
     if (!connected) return null;
-    return await freighter.getPublicKey();
+
+    // v3: getAddress() returns { address: string }
+    // v2: getPublicKey() returns string
+    if (freighter.getAddress) {
+      const res = await freighter.getAddress().catch(() => null);
+      return res?.address ?? null;
+    }
+    return await freighter.getPublicKey().catch(() => null);
   } catch {
     return null;
   }
@@ -41,27 +54,45 @@ export async function checkExistingConnection(): Promise<string | null> {
 
 export async function connectFreighter(): Promise<WalletInfo> {
   try {
-    const freighter = await import('@stellar/freighter-api').catch(() => null);
+    const freighter = await loadFreighter();
     if (!freighter) {
-      // Demo fallback — no extension installed
       return { publicKey: DEMO_PUBLIC_KEY, isCorrectNetwork: true };
     }
 
-    const connected = await freighter.isConnected();
+    const connResult = await freighter.isConnected().catch(() => null);
+    const connected =
+      typeof connResult === 'boolean' ? connResult : connResult?.isConnected;
+
     if (!connected) {
-      // Offer demo mode when extension is absent
       return { publicKey: DEMO_PUBLIC_KEY, isCorrectNetwork: true };
     }
 
-    await freighter.requestAccess();
-    const publicKey = await freighter.getPublicKey();
-    const details = await freighter.getNetworkDetails();
-    return {
-      publicKey,
-      isCorrectNetwork: details.networkPassphrase === EXPECTED_PASSPHRASE,
-    };
+    // Request access (v2/v3 compatible)
+    if (freighter.requestAccess) {
+      await freighter.requestAccess().catch(() => {});
+    }
+
+    let publicKey: string;
+    if (freighter.getAddress) {
+      const res = await freighter.getAddress().catch(() => null);
+      publicKey = res?.address ?? DEMO_PUBLIC_KEY;
+    } else {
+      publicKey = (await freighter.getPublicKey().catch(() => DEMO_PUBLIC_KEY)) ?? DEMO_PUBLIC_KEY;
+    }
+
+    // Network passphrase check
+    let isCorrectNetwork = true;
+    try {
+      const details = await freighter.getNetworkDetails().catch(() => null);
+      if (details?.networkPassphrase) {
+        isCorrectNetwork = details.networkPassphrase === EXPECTED_PASSPHRASE;
+      }
+    } catch {
+      // best-effort
+    }
+
+    return { publicKey, isCorrectNetwork };
   } catch {
-    // Demo fallback on any error
     return { publicKey: DEMO_PUBLIC_KEY, isCorrectNetwork: true };
   }
 }
@@ -75,10 +106,13 @@ export async function signTransaction(
   xdr: string,
   opts: { networkPassphrase: string },
 ): Promise<string> {
-  const freighter = await import('@stellar/freighter-api').catch(() => null);
-  if (freighter) {
-    return freighter.signTransaction(xdr, opts);
+  const freighter = await loadFreighter();
+  if (!freighter) return xdr;
+  try {
+    // v3: signTransaction returns { signedTxXdr }; v2: returns string
+    const result = await freighter.signTransaction(xdr, opts);
+    return typeof result === 'string' ? result : result?.signedTxXdr ?? xdr;
+  } catch {
+    return xdr;
   }
-  // Demo: return the XDR unchanged
-  return xdr;
 }

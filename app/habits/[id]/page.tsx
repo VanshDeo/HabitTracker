@@ -240,7 +240,7 @@ export default function HabitDetailPage({ params }: PageProps) {
         {habit.isActive && (
           <div className="flex items-center gap-3">
             {isCheckedIn ? (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-700">
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-100 px-5 py-2.5 text-sm font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
                 <CheckCircle className="h-4 w-4" />
                 Already checked in today
               </div>

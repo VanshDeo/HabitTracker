@@ -136,12 +136,12 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
         </div>
 
         {/* Token reward preview */}
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-          <div className="flex items-center gap-2 font-semibold text-amber-800 mb-1">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-700 dark:bg-amber-950/30">
+          <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300 mb-1">
             <Coins className="h-4 w-4 text-amber-500" />
             First check-in reward
           </div>
-          <p className="text-amber-700 leading-relaxed">
+          <p className="text-amber-700 dark:text-amber-400 leading-relaxed">
             You will earn{' '}
             <span className="font-bold">
               {STREAK_REWARDS[STREAK_REWARDS.length - 1].reward} token
