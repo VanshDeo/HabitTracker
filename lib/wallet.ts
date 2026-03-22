@@ -1,9 +1,12 @@
 /**
  * wallet.ts — Freighter wallet integration utilities.
  *
- * In a live deployment these functions call the real @stellar/freighter-api.
- * In the preview/demo environment they simulate wallet behaviour so the UI
- * can be exercised without the browser extension installed.
+ * Calls window.freighter directly — the global injected by the Freighter
+ * browser extension — instead of importing @stellar/freighter-api.
+ * This avoids the package's module-init side effects that try to connect
+ * to MetaMask when Freighter is not installed.
+ *
+ * Falls back to demo mode (DEMO_PUBLIC_KEY) when the extension is absent.
  */
 
 export interface WalletInfo {
@@ -11,84 +14,85 @@ export interface WalletInfo {
   isCorrectNetwork: boolean;
 }
 
+// Minimal shape of the window.freighter global injected by the extension
+interface FreighterGlobal {
+  isConnected: () => Promise<boolean | { isConnected: boolean }>;
+  requestAccess?: () => Promise<void>;
+  getPublicKey?: () => Promise<string>;
+  getAddress?: () => Promise<{ address: string }>;
+  getNetworkDetails?: () => Promise<{ networkPassphrase?: string }>;
+  signTransaction?: (
+    xdr: string,
+    opts: { networkPassphrase: string },
+  ) => Promise<string | { signedTxXdr: string }>;
+}
+
 const DEMO_PUBLIC_KEY = 'GDEMO7STELLAR7HABITS7TRACKER7PUBLICKEY7GABCDEFGHIJKLMNOP';
 const EXPECTED_PASSPHRASE =
   process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? 'Test SDF Network ; September 2015';
 
-// ── Freighter API helper ──────────────────────────────────────────────────────
-// Handles both v2 and v3 API shapes (v3 returns { address } from getAddress())
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function loadFreighter(): Promise<any | null> {
-  try {
-    if (typeof window === 'undefined') return null;
-    return await import('@stellar/freighter-api').catch(() => null);
-  } catch {
-    return null;
-  }
+function getFreighter(): FreighterGlobal | null {
+  if (typeof window === 'undefined') return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (window as any).freighter ?? null;
 }
 
-export async function checkExistingConnection(): Promise<string | null> {
-  try {
-    const freighter = await loadFreighter();
-    if (!freighter) return null;
+// ── Public API ────────────────────────────────────────────────────────────────
 
-    // v3 API: isConnected() returns { isConnected: boolean }
-    const connResult = await freighter.isConnected().catch(() => null);
-    if (!connResult) return null;
+/** Called on mount to silently restore an existing Freighter session. */
+export async function checkExistingConnection(): Promise<string | null> {
+  const freighter = getFreighter();
+  if (!freighter) return null;
+  try {
+    const result = await freighter.isConnected();
     const connected =
-      typeof connResult === 'boolean' ? connResult : connResult?.isConnected;
+      typeof result === 'boolean' ? result : result?.isConnected;
     if (!connected) return null;
 
-    // v3: getAddress() returns { address: string }
-    // v2: getPublicKey() returns string
     if (freighter.getAddress) {
-      const res = await freighter.getAddress().catch(() => null);
+      const res = await freighter.getAddress();
       return res?.address ?? null;
     }
-    return await freighter.getPublicKey().catch(() => null);
+    return (await freighter.getPublicKey?.()) ?? null;
   } catch {
     return null;
   }
 }
 
+/**
+ * Called when the user clicks "Connect Wallet".
+ * Falls back to demo mode when Freighter extension is not installed.
+ */
 export async function connectFreighter(): Promise<WalletInfo> {
+  const freighter = getFreighter();
+
+  // ── Demo mode ──────────────────────────────────────────────────────────────
+  if (!freighter) {
+    return { publicKey: DEMO_PUBLIC_KEY, isCorrectNetwork: true };
+  }
+
+  // ── Real Freighter ─────────────────────────────────────────────────────────
   try {
-    const freighter = await loadFreighter();
-    if (!freighter) {
-      return { publicKey: DEMO_PUBLIC_KEY, isCorrectNetwork: true };
-    }
-
-    const connResult = await freighter.isConnected().catch(() => null);
-    const connected =
-      typeof connResult === 'boolean' ? connResult : connResult?.isConnected;
-
-    if (!connected) {
-      return { publicKey: DEMO_PUBLIC_KEY, isCorrectNetwork: true };
-    }
-
-    // Request access (v2/v3 compatible)
     if (freighter.requestAccess) {
-      await freighter.requestAccess().catch(() => {});
+      await freighter.requestAccess();
     }
 
     let publicKey: string;
     if (freighter.getAddress) {
-      const res = await freighter.getAddress().catch(() => null);
+      const res = await freighter.getAddress();
       publicKey = res?.address ?? DEMO_PUBLIC_KEY;
     } else {
-      publicKey = (await freighter.getPublicKey().catch(() => DEMO_PUBLIC_KEY)) ?? DEMO_PUBLIC_KEY;
+      publicKey = (await freighter.getPublicKey?.()) ?? DEMO_PUBLIC_KEY;
     }
 
-    // Network passphrase check
     let isCorrectNetwork = true;
     try {
-      const details = await freighter.getNetworkDetails().catch(() => null);
+      const details = await freighter.getNetworkDetails?.();
       if (details?.networkPassphrase) {
         isCorrectNetwork = details.networkPassphrase === EXPECTED_PASSPHRASE;
       }
     } catch {
-      // best-effort
+      /* best-effort */
     }
 
     return { publicKey, isCorrectNetwork };
@@ -106,10 +110,9 @@ export async function signTransaction(
   xdr: string,
   opts: { networkPassphrase: string },
 ): Promise<string> {
-  const freighter = await loadFreighter();
-  if (!freighter) return xdr;
+  const freighter = getFreighter();
+  if (!freighter?.signTransaction) return xdr;
   try {
-    // v3: signTransaction returns { signedTxXdr }; v2: returns string
     const result = await freighter.signTransaction(xdr, opts);
     return typeof result === 'string' ? result : result?.signedTxXdr ?? xdr;
   } catch {
