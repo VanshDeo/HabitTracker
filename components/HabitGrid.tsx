@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { Habit, TxState } from '@/types';
 import { HabitCard } from './HabitCard';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Target } from 'lucide-react';
 
 interface HabitGridProps {
   habits:        Habit[];
@@ -53,10 +53,12 @@ export function HabitGrid({
   if (habits.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card py-16 text-center">
-        <span className="text-4xl mb-3 select-none" aria-hidden>🎯</span>
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted mb-4">
+          <Target className="h-7 w-7 text-muted-foreground" />
+        </div>
         <h3 className="text-lg font-semibold text-foreground">No habits yet</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create your first habit and start earning tokens.
+        <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+          Create your first habit and start building streaks to earn HABIT tokens.
         </p>
         <Link
           href="/habits/new"
@@ -69,7 +71,10 @@ export function HabitGrid({
     );
   }
 
-  const isMutating = txState.status !== 'idle' && txState.status !== 'success' && txState.status !== 'failed';
+  const isMutating =
+    txState.status !== 'idle' &&
+    txState.status !== 'success' &&
+    txState.status !== 'failed';
 
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">

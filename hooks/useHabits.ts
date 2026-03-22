@@ -25,11 +25,11 @@ import type { Habit, UserStats, Frequency, TxState, TxStatus } from '@/types';
 import { INITIAL_TX_STATE } from '@/types';
 
 export function useHabits(publicKey: string | null) {
-  const [habits, setHabits]             = useState<Habit[]>([]);
-  const [stats, setStats]               = useState<UserStats | null>(null);
-  const [loading, setLoading]           = useState(false);
-  const [txState, setTxState]           = useState<TxState>(INITIAL_TX_STATE);
-  const [checkedInMap, setCheckedInMap] = useState<Record<number, boolean>>({});
+  const [habits, setHabits]               = useState<Habit[]>([]);
+  const [stats, setStats]                 = useState<UserStats | null>(null);
+  const [loading, setLoading]             = useState(false);
+  const [txState, setTxState]             = useState<TxState>(INITIAL_TX_STATE);
+  const [checkedInMap, setCheckedInMap]   = useState<Record<number, boolean>>({});
   const [activeHabitId, setActiveHabitId] = useState<number | null>(null);
 
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,14 +40,16 @@ export function useHabits(publicKey: string | null) {
     setTxState((prev) => ({ ...prev, status }));
   }, []);
 
-  /** Schedule auto-reset of txState 5 s after success */
-  function scheduleReset() {
+  const resetTx = useCallback(() => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-    resetTimerRef.current = setTimeout(() => {
-      setTxState(INITIAL_TX_STATE);
-      setActiveHabitId(null);
-    }, 5000);
-  }
+    setTxState(INITIAL_TX_STATE);
+    setActiveHabitId(null);
+  }, []);
+
+  const scheduleReset = useCallback(() => {
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = setTimeout(resetTx, 5000);
+  }, [resetTx]);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -69,6 +71,11 @@ export function useHabits(publicKey: string | null) {
         }),
       );
       setCheckedInMap(map);
+
+      // Notify NavActions (and any other listeners) that data has changed
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('habits:updated'));
+      }
     } catch (err) {
       console.error('[useHabits] refresh error:', err);
     }
@@ -86,11 +93,15 @@ export function useHabits(publicKey: string | null) {
     refresh().finally(() => setLoading(false));
   }, [publicKey, refresh]);
 
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    };
+  }, []);
+
   // ── Mutations ──────────────────────────────────────────────────────────────
 
-  /**
-   * Create a new habit.
-   */
   const createHabit = useCallback(
     async (name: string, description: string, frequency: Frequency) => {
       if (!publicKey) return;
@@ -105,12 +116,9 @@ export function useHabits(publicKey: string | null) {
         setActiveHabitId(null);
       }
     },
-    [publicKey, onStatus, refresh],
+    [publicKey, onStatus, refresh, scheduleReset],
   );
 
-  /**
-   * Check in a habit for today.
-   */
   const checkIn = useCallback(
     async (habitId: number) => {
       if (!publicKey) return;
@@ -127,12 +135,9 @@ export function useHabits(publicKey: string | null) {
         setActiveHabitId(null);
       }
     },
-    [publicKey, onStatus, refresh],
+    [publicKey, onStatus, refresh, scheduleReset],
   );
 
-  /**
-   * Deactivate (soft-delete) a habit.
-   */
   const deactivateHabit = useCallback(
     async (habitId: number) => {
       if (!publicKey) return;
@@ -148,7 +153,7 @@ export function useHabits(publicKey: string | null) {
         setActiveHabitId(null);
       }
     },
-    [publicKey, onStatus, refresh],
+    [publicKey, onStatus, refresh, scheduleReset],
   );
 
   return {
@@ -162,5 +167,6 @@ export function useHabits(publicKey: string | null) {
     checkIn,
     deactivateHabit,
     refresh,
+    resetTx,
   };
 }

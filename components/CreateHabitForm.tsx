@@ -1,18 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { STREAK_REWARDS, INITIAL_TX_STATE } from '@/types';
+import { STREAK_REWARDS } from '@/types';
 import type { Frequency, TxState } from '@/types';
 import { TxToast } from './TxToast';
 import { Loader2, Coins } from 'lucide-react';
 
 interface CreateHabitFormProps {
-  onCreateHabit: (
-    name: string,
-    description: string,
-    frequency: Frequency,
-  ) => Promise<void>;
+  onCreateHabit: (name: string, description: string, frequency: Frequency) => Promise<void>;
   txState:   TxState;
   onDismiss: () => void;
 }
@@ -22,6 +18,13 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
   const [name,        setName]        = useState('');
   const [description, setDescription] = useState('');
   const [frequency,   setFrequency]   = useState<Frequency>('Daily');
+
+  // Auto-navigate to dashboard 1.5 s after success
+  useEffect(() => {
+    if (txState.status !== 'success') return;
+    const t = setTimeout(() => router.push('/'), 1500);
+    return () => clearTimeout(t);
+  }, [txState.status, router]);
 
   const isMutating =
     txState.status !== 'idle' &&
@@ -39,14 +42,9 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
       e.preventDefault();
       if (!isValid) return;
       await onCreateHabit(name.trim(), description.trim(), frequency);
-      // navigate home after a short delay (txState auto-resets in hook)
-      setTimeout(() => router.push('/'), 1500);
     },
-    [isValid, onCreateHabit, name, description, frequency, router],
+    [isValid, onCreateHabit, name, description, frequency],
   );
-
-  // Preview reward for a 1-day streak
-  const previewReward = STREAK_REWARDS[STREAK_REWARDS.length - 1].reward;
 
   return (
     <>
@@ -57,7 +55,11 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
             <label htmlFor="habit-name" className="block text-sm font-semibold text-foreground">
               Habit Name <span className="text-destructive">*</span>
             </label>
-            <span className={`text-xs tabular-nums ${name.length > 64 ? 'text-destructive' : 'text-muted-foreground'}`}>
+            <span
+              className={`text-xs tabular-nums ${
+                name.length > 64 ? 'text-destructive' : 'text-muted-foreground'
+              }`}
+            >
               {name.length}/64
             </span>
           </div>
@@ -69,9 +71,10 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
             placeholder="e.g. Morning Run"
             maxLength={80}
             className={`w-full rounded-lg border px-3 py-2.5 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition ${
-              name.length > 64 ? 'border-destructive ring-destructive/30' : 'border-input'
+              name.length > 64 ? 'border-destructive' : 'border-input'
             }`}
             required
+            autoFocus
           />
           {name.length > 64 && (
             <p className="mt-1 text-xs text-destructive">Name must be 64 characters or fewer.</p>
@@ -82,9 +85,14 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label htmlFor="habit-desc" className="block text-sm font-semibold text-foreground">
-              Description <span className="text-muted-foreground font-normal">(optional)</span>
+              Description{' '}
+              <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
-            <span className={`text-xs tabular-nums ${description.length > 256 ? 'text-destructive' : 'text-muted-foreground'}`}>
+            <span
+              className={`text-xs tabular-nums ${
+                description.length > 256 ? 'text-destructive' : 'text-muted-foreground'
+              }`}
+            >
               {description.length}/256
             </span>
           </div>
@@ -96,11 +104,13 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
             placeholder="Describe your habit goal..."
             maxLength={280}
             className={`w-full rounded-lg border px-3 py-2.5 text-sm bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition resize-none leading-relaxed ${
-              description.length > 256 ? 'border-destructive ring-destructive/30' : 'border-input'
+              description.length > 256 ? 'border-destructive' : 'border-input'
             }`}
           />
           {description.length > 256 && (
-            <p className="mt-1 text-xs text-destructive">Description must be 256 characters or fewer.</p>
+            <p className="mt-1 text-xs text-destructive">
+              Description must be 256 characters or fewer.
+            </p>
           )}
         </div>
 
@@ -113,7 +123,7 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
                 key={f}
                 type="button"
                 onClick={() => setFrequency(f)}
-                className={`flex-1 rounded-lg border py-2 text-sm font-semibold transition-colors ${
+                className={`flex-1 rounded-lg border py-2.5 text-sm font-semibold transition-colors ${
                   frequency === f
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-background text-foreground border-input hover:bg-muted'
@@ -125,16 +135,18 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
           </div>
         </div>
 
-        {/* Token preview */}
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <div className="flex items-center gap-2 font-semibold">
+        {/* Token reward preview */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+          <div className="flex items-center gap-2 font-semibold text-amber-800 mb-1">
             <Coins className="h-4 w-4 text-amber-500" />
-            Token reward preview
+            First check-in reward
           </div>
-          <p className="mt-1 text-amber-700">
+          <p className="text-amber-700 leading-relaxed">
             You will earn{' '}
-            <span className="font-bold">1 token</span> per check-in to start.
-            Reach a{' '}
+            <span className="font-bold">
+              {STREAK_REWARDS[STREAK_REWARDS.length - 1].reward} token
+            </span>{' '}
+            on day 1. Maintain a{' '}
             <span className="font-bold">7-day streak</span> to earn{' '}
             <span className="font-bold">10 tokens</span> per check-in.
           </p>
@@ -152,7 +164,7 @@ export function CreateHabitForm({ onCreateHabit, txState, onDismiss }: CreateHab
               {txState.action ?? 'Processing...'}
             </>
           ) : (
-            'Create Habit'
+            'Create Habit on Stellar'
           )}
         </button>
       </form>

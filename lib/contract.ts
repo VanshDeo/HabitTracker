@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * contract.ts — All Soroban contract interactions.
  *
@@ -381,7 +379,23 @@ export async function contractGetUserStats(owner: string): Promise<UserStats> {
   }
 }
 
-/** Returns true if the habit has already been checked in today. */
+/** Returns a single habit by ID for a given owner. */
+export async function contractGetHabitById(
+  owner: string,
+  habitId: number,
+): Promise<Habit | null> {
+  if (!CONTRACT_ID) {
+    return demoGetHabits(owner).find((h) => h.id === habitId) ?? null;
+  }
+  try {
+    const sdk  = await import('@stellar/stellar-sdk');
+    const args = [sdk.nativeToScVal(habitId, { type: 'u32' })];
+    const raw  = await readTx<Record<string, unknown>>(owner, 'get_habit', args);
+    return decodeHabit(raw);
+  } catch {
+    return null;
+  }
+}
 export async function contractIsCheckedInToday(
   owner: string,
   habitId: number,

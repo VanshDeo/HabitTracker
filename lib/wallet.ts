@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * wallet.ts — Freighter wallet integration utilities.
  *
