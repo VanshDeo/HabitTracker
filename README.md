@@ -1,35 +1,71 @@
-# HabitTracker
+# 🌟 Stellar Habit Tracker
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+A decentralized habit tracking application built on the **Stellar Network** using **Soroban** smart contracts. Track your daily and weekly habits, maintain streaks, and earn on-chain token rewards for your consistency.
 
-## Built with v0
+## 🚀 Live on Stellar Testnet
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+The smart contract is deployed and active on the Stellar Testnet.
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_uzGpmBZmE12aZ39uReuE7wOI8ZDz)
+- **Contract ID:** `CB3FCVE324ZBTHNEMJGWTYDYGZ3RM4Z7LHMH4ND2MISGUGSMA6YG4O5S`
+- **Network:** Testnet
+- **RPC URL:** `https://soroban-testnet.stellar.org`
 
-## Getting Started
+## ✨ Features
 
-First, run the development server:
+- **Decentralized Tracking:** All your habits and streaks are stored securely on the Stellar blockchain.
+- **Streak Logic:** Smart contract automatically calculates daily/weekly streaks based on ledger timestamps.
+- **Token Rewards:** Earn "HABIT" tokens for every check-in, with multipliers for hitting 3-day, 7-day, 30-day, and 100-day milestones.
+- **Premium UI:** A modern, high-performance dashboard built with Next.js and Tailwind CSS.
+- **Wallet Integration:** Seamless connection with the Freighter wallet.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+## 📸 Screenshots
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Dashboard Preview
+![Dashboard Preview](/Users/vanshdeo/dev/HabitTracker/screenshots/Dashboard.png)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Stellar Labs Verification
+![Stellar Labs View](/Users/vanshdeo/dev/HabitTracker/screenshots/Stellar.png)
 
-## Learn More
+## 🛠️ Tech Stack
 
-To learn more, take a look at the following resources:
+- **Smart Contract:** Rust / Soroban SDK
+- **Frontend:** Next.js (App Router), TypeScript, Tailwind CSS
+- **Blockchain Connectivity:** `@stellar/stellar-sdk`, `@stellar/freighter-api`
+- **Styling:** Lucide React Icons, Shadcn UI components
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+## 🏗️ Getting Started
 
-<a href="https://v0.app/chat/api/kiro/clone/VanshDeo/HabitTracker" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+### Prerequisites
+- Node.js & npm/pnpm
+- [Stellar CLI](https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup#install-the-stellar-cli)
+- [Freighter Wallet](https://www.freighter.app/)
+
+### Installation
+
+1. **Clone and install dependencies:**
+   ```bash
+   pnpm install
+   ```
+
+2. **Deploy the contract (Optional):**
+   If you want to deploy your own instance, use the provided script:
+   ```bash
+   bash scripts/deploy.sh
+   ```
+
+3. **Configure Environment:**
+   Ensure your `.env.local` has the following (generated automatically by the deploy script):
+   ```env
+   NEXT_PUBLIC_CONTRACT_ID=CB3FCVE324ZBTHNEMJGWTYDYGZ3RM4Z7LHMH4ND2MISGUGSMA6YG4O5S
+   NEXT_PUBLIC_RPC_URL=https://soroban-testnet.stellar.org
+   NEXT_PUBLIC_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+   ```
+
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+---
+Built with 💜 on Stellar.
