@@ -21,10 +21,10 @@ The smart contract is deployed and active on the Stellar Testnet.
 ## 📸 Screenshots
 
 ### Dashboard Preview
-![Dashboard Preview](/Users/vanshdeo/dev/HabitTracker/screenshots/Dashboard.png)
+![Dashboard Preview](./screenshots/Dashboard.png)
 
 ### Stellar Labs Verification
-![Stellar Labs View](/Users/vanshdeo/dev/HabitTracker/screenshots/Stellar.png)
+![Stellar Labs View](./screenshots/Stellar.png)
 
 ## 🛠️ Tech Stack
 
